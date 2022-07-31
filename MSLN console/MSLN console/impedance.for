@@ -1,37 +1,38 @@
-      subroutine impedance(n,dC,Um,em,dZ0)
+      subroutine impedance(n,dC,em,Um,Zo)
 ! Результирующая матрица импедансов (Ом)
       implicit complex*16(c,w,z), real*8(a-b,d-h,o-v,x-y)
-      dimension dZ0(n,n), dC(n*n), Um(n*n), em(n)
-      dimension dV(n,n), dCn(n,n), dUn(n,n), dEmn(n)
-      dimension dCe(n,n), dUe(n,n)
-      k=1
-      do i=1,n
-          do j=1,n
-              dCn(i,j) = dC(k)
-              k=k+1
-          end do
-      end do
-      k=1
-      do i=1,n
-          do j=1,n
-              dUn(i,j) = Um(k)
-              k=k+1
-          end do
-      end do
-      do i=1,n
-          dEmn(i) = em(i)
-      end do
-      dUe=0
-      dV=0
-      c=2.99792458
-      dV(1,1) = sqrt(dEmn(2))/c
-      dV(2,2) = sqrt(dEmn(1))/c
-      dZ0=dCn
-      call matr(dCn, dCe, n)
-      dCn=dZ0
-      dZ0=dUn
-      call matr(dUn, dUe, n)
-      dUn=dZ0
-      dZ0=matmul(matmul(matmul(dUn, dV), dUe), dCe)*10e3
+      dimension em(n), v(n), Um(n*n)
+      dimension dC(n*n)
+      real*8 Im(n*n),Zo(n*n)
+!--------------------------------------------------------------------------
+! Умножение матриц dС*Um как векторов
+      do 30 i=1,n
+          do 30 j=1,n
+              ij = i + (j-1)*n
+              Im(ij) = 0.0
+              do 30 k=1,n
+                  ik = i + (k-1)*n
+                  kj = k + (j-1)*n
+30    Im(ij) = Im(ij) + dC(ik)*Um(kj)
+      
+! Вычисление матрицы-столбца скоростей v (м/нс). Операция над матрицами целиком
+      v=.2998/sqrt(em)				  !	с=0.2998 м/нс - скорость света 10^9
+! Умножение квадратной матрицы [] на диагональную матрицу v как векторов Im=[C*Um]*v
+      do 32 i=1,n
+          do 32 j=1,n
+              ij = i + n*(j-1)
+32    Im(ij) = Im(ij)*v(j)/1000.  ! Нормируем, деля на 1000 (или умножая на 0.001)
+! Обращение матрицы Im=Im^-1
+      call dminv(Im,n,x)
+! Умножение матриц как векторов Zo=Um*Im^-1
+      do 33 i=1,n
+          do 33 j=1,n
+              ij = i + (j-1)*n
+              xx=0.
+              do 34 k=1,N
+                  ik = i + (k-1)*n
+                  kj = k + (j-1)*n
+34            xx = xx + Um(ik)*Im(kj)
+33    Zo(ij) = xx     
       return
       end
